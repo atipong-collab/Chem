@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Covalent Lab - เกมพันธะโคเวเลนต์เดี่ยว</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Kanit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Kanit', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+    }
+    .neon-text-cyan {
+      text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    }
+    .atom-glow {
+      filter: drop-shadow(0px 0px 6px rgba(56, 189, 248, 0.3));
+    }
+    .electron-selected {
+      filter: drop-shadow(0px 0px 8px #f43f5e) drop-shadow(0px 0px 12px #f43f5e);
+    }
+  </style>
+</head>
+<body class="h-full w-full text-slate-100 flex flex-col justify-between bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
+
+  <!-- ==================== SOUND SYNTHESIZER ==================== -->
+  <script>
+    class SoundFx {
+      constructor() { this.ctx = null; }
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+      playSelect() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.08);
+      }
+      playBond() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.08);
+        osc.frequency.setValueAtTime(783.99, now + 0.16);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.3);
+      }
+      playSuccess() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+          gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.2);
+        });
+      }
+      playWrong() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.setValueAtTime(160, now + 0.12);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.3);
+      }
+      playBreak() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(now + 0.15);
+      }
+    }
+    const sound = new SoundFx();
+  </script>
+
+  <!-- ==================== HEADER BAR ==================== -->
+  <header class="w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex justify-between items-center z-20">
+    <div class="flex items-center gap-3">
+      <div class="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400 font-bold text-xl">
+        🧪
+      </div>
+      <div>
+        <h1 class="text-lg md:text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+          Covalent Lab
+        </h1>
+        <p class="text-xs text-slate-400 hidden sm:block">เกมพันธะโคเวเลนต์เดี่ยว (Single Covalent Bond)</p>
+      </div>
+    </div>
+
+    <!-- Info Stats & Timer (Visible in Game) -->
+    <div id="header-stats" class="hidden flex items-center gap-2 sm:gap-3 text-sm font-medium">
+      <!-- Countdown Timer Box -->
+      <div class="px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-500/50 flex items-center gap-1.5 shadow-sm shadow-amber-500/10">
+        <span class="text-amber-400">⏱</span>
+        <span id="stat-timer" class="text-amber-300 font-extrabold text-base tracking-wider">03:00</span>
+      </div>
+      <div class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center gap-2 hidden sm:flex">
+        <span class="text-slate-400">ผู้เล่น:</span>
+        <span id="stat-player-name" class="text-cyan-300 font-semibold max-w-[100px] truncate">นักเรียน</span>
+      </div>
+      <div class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center gap-2">
+        <span class="text-slate-400">ข้อ:</span>
+        <span id="stat-progress" class="text-cyan-400 font-bold">1/5</span>
+      </div>
+      <div class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-cyan-500/40 flex items-center gap-2 shadow-sm shadow-cyan-500/20">
+        <span class="text-slate-400">คะแนน:</span>
+        <span id="stat-score" class="text-yellow-400 font-bold text-base">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Timer Bar (Progress Indicator) -->
+  <div id="timer-bar-container" class="w-full bg-slate-900 h-1.5 hidden z-20">
+    <div id="timer-bar" class="bg-gradient-to-r from-amber-400 to-cyan-400 h-full w-full transition-all duration-1000 ease-linear"></div>
+  </div>
+
+  <!-- ==================== MAIN CONTENT AREA ==================== -->
+  <main class="relative flex-1 w-full overflow-hidden flex flex-col justify-center items-center">
+
+    <!-- SCREEN 1: START SCREEN -->
+    <section id="screen-start" class="w-full max-w-md p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl z-30 flex flex-col gap-6 m-4">
+      <div class="text-center space-y-2">
+        <span class="px-3 py-1 text-xs font-semibold tracking-wider text-cyan-300 bg-cyan-950/80 border border-cyan-800 rounded-full uppercase">
+          วิชาเคมี ม.ปลาย
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">ทดสอบสร้างพันธะ</h2>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          สังเกตธาตุและจับคู่อิเล็กตรอนเดี่ยวชั้นนอกสุดเพื่อสร้างพันธะโคเวเลนต์เดี่ยวสำหรับสารประกอบที่กำหนดให้ถูกต้อง
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label for="input-name" class="block text-xs font-medium text-slate-300 mb-1.5">ชื่อ-นามสกุล / รหัสนักเรียน</label>
+          <input type="text" id="input-name" placeholder="ระบุชื่อผู้เล่น..." class="w-full px-4 py-3 bg-slate-950/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition">
+        </div>
+
+        <div class="p-4 bg-slate-950/60 rounded-xl border border-slate-800/80 text-xs text-slate-300 space-y-2">
+          <div class="font-semibold text-cyan-400 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            กติกาการเล่น & คิดคะแนน
+          </div>
+          <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1">
+            <li>เวลาในการทำข้อสอบรวม: <span class="text-amber-400 font-semibold">3 นาที (180 วินาที)</span></li>
+            <li>ตอบถูกครั้งแรก: <span class="text-green-400 font-semibold">+2 คะแนน</span> (สะสมต่อเนื่อง)</li>
+            <li>ตอบถูกครั้งที่สอง: <span class="text-yellow-400 font-semibold">+1 คะแนน</span> (สะสมต่อเนื่อง)</li>
+            <li>แสดงสูตรเคมีและเฉลยเมื่อตอบถูก หรือผิด 2 ครั้งติดกัน</li>
+          </ul>
+        </div>
+      </div>
+
+      <button id="btn-start" onclick="startGame()" class="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/25 active:scale-95 transition-all text-center">
+        เริ่มเข้าสู่ห้องแล็บ (เวลา 3 นาที)
+      </button>
+    </section>
+
+    <!-- SCREEN 2: GAMEPLAY ARENA -->
+    <section id="screen-game" class="absolute inset-0 hidden flex-col justify-between p-4 z-10">
+
+      <!-- Top Target Molecule Box (Shows ONLY Molecule Name during gameplay) -->
+      <div class="w-full max-w-xl mx-auto bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-3 flex items-center justify-between shadow-lg z-20">
+        <div class="flex items-center gap-3">
+          <div class="text-xs text-slate-400">โจทย์สร้างพันธะ:</div>
+          <div id="target-name" class="text-base sm:text-lg font-bold text-cyan-300">น้ำ (Water)</div>
+        </div>
+        <div id="attempt-badge" class="px-2.5 py-1 text-xs font-semibold text-amber-300 bg-amber-950/60 border border-amber-800/80 rounded-full">
+          โอกาสครั้งที่ 1/2
+        </div>
+      </div>
+
+      <!-- CANVAS / SVG INTERACTION PLAYFIELD -->
+      <div id="playfield" class="relative flex-1 w-full my-2 rounded-2xl border border-slate-800/60 bg-slate-950/40 backdrop-blur-sm overflow-hidden">
+        <!-- SVG Canvas for Bonds & Atoms -->
+        <svg id="game-svg" class="w-full h-full absolute inset-0 cursor-crosshair">
+          <!-- Bond Lines rendered here -->
+          <g id="bonds-group"></g>
+        </svg>
+
+        <!-- HTML Elements for Atoms container -->
+        <div id="atoms-container" class="absolute inset-0 pointer-events-none"></div>
+      </div>
+
+      <!-- Action Control Buttons -->
+      <div class="w-full max-w-xl mx-auto flex items-center justify-center gap-3 z-20">
+        <button onclick="clearBonds()" class="flex-1 py-3 bg-slate-800/90 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-200 font-semibold rounded-xl active:scale-95 transition shadow-lg flex items-center justify-center gap-2">
+          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          สลายพันธะ (Clear)
+        </button>
+        <button onclick="checkAnswer()" class="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          สร้าง & ตรวจคำตอบ
+        </button>
+        <button onclick="endGameEarly()" class="py-3 px-4 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 font-medium rounded-xl text-xs active:scale-95 transition">
+          จบเกม
+        </button>
+      </div>
+    </section>
+
+    <!-- MODAL 1: ANSWER FEEDBACK / LEWIS SOLUTION MODAL -->
+    <div id="modal-feedback" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col items-center text-center gap-3 max-h-[90vh] overflow-y-auto">
+        <div id="feedback-icon" class="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-green-500/10 border border-green-500/30 text-green-400 shrink-0">
+          ✓
+        </div>
+        <div>
+          <h3 id="feedback-title" class="text-xl font-bold text-white">ถูกต้องสมบูรณ์!</h3>
+          <p id="feedback-desc" class="text-xs text-slate-400 mt-0.5">คุณสร้างพันธะโคเวเลนต์เดี่ยวเรียบร้อยแล้ว</p>
+        </div>
+
+        <!-- Formula Reveal Box -->
+        <div id="formula-reveal-box" class="w-full bg-slate-950/80 border border-cyan-500/40 rounded-xl py-2 px-3 flex justify-between items-center shadow-inner">
+          <span class="text-xs text-slate-400">สูตรโมเลกุลที่ได้:</span>
+          <span id="revealed-formula" class="text-2xl font-black text-cyan-300 neon-text-cyan">H₂O</span>
+        </div>
+
+        <!-- Lewis Models Comparison Box (Shown ONLY on Correct OR 2nd Wrong Attempt) -->
+        <div id="lewis-models-container" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col gap-3">
+          <div class="text-xs text-cyan-400 font-semibold flex items-center justify-center gap-1">
+            <span>📊</span> แบบจำลองการเกิดพันธะ (Lewis Structure)
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- 1. Lewis Dot Structure -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center">
+              <span class="text-[11px] font-medium text-slate-300 mb-1">1. แบบจุด (Dot Structure)</span>
+              <svg id="lewis-dot-svg" class="w-full h-32 bg-slate-950/60 rounded border border-slate-900"></svg>
+            </div>
+
+            <!-- 2. Lewis Line Structure -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center">
+              <span class="text-[11px] font-medium text-slate-300 mb-1">2. แบบเส้น (Line Structure)</span>
+              <svg id="lewis-line-svg" class="w-full h-32 bg-slate-950/60 rounded border border-slate-900"></svg>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-next" onclick="closeFeedbackModal()" class="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl active:scale-95 transition mt-1">
+          ข้อถัดไป →
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: GAME OVER REPORT SCREEN -->
+    <section id="screen-result" class="w-full max-w-lg p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl z-30 hidden flex-col items-center text-center gap-6 m-4">
+      <div class="space-y-1">
+        <div class="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl inline-block text-3xl mb-2">
+          🏆
+        </div>
+        <h2 class="text-2xl font-black text-white">สรุปผลการทดสอบ</h2>
+        <p class="text-xs text-slate-400">รายงานผลการเรียนรู้เคมี - พันธะโคเวเลนต์เดี่ยว</p>
+      </div>
+
+      <div class="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
+        <div class="flex justify-between items-center text-sm border-b border-slate-800/80 pb-2">
+          <span class="text-slate-400">ชื่อผู้เรียน:</span>
+          <span id="res-name" class="text-cyan-300 font-bold">นักเรียน</span>
+        </div>
+        <div class="flex justify-between items-center text-sm border-b border-slate-800/80 pb-2">
+          <span class="text-slate-400">ตอบถูกทั้งหมด:</span>
+          <span id="res-correct" class="text-emerald-400 font-bold">0 / 5 ข้อ</span>
+        </div>
+        <div class="flex justify-between items-center text-sm border-b border-slate-800/80 pb-2">
+          <span class="text-slate-400">คะแนนสะสมรวม:</span>
+          <span id="res-score" class="text-yellow-400 font-black text-lg">0 คะแนน</span>
+        </div>
+        <div class="flex justify-between items-center text-sm border-b border-slate-800/80 pb-2">
+          <span class="text-slate-400">เวลาที่ใช้ไป:</span>
+          <span id="res-time-used" class="text-amber-300 font-semibold">00:00 นาที</span>
+        </div>
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-slate-400">ระดับประเมิน:</span>
+          <span id="res-grade" class="px-2.5 py-0.5 bg-cyan-950 border border-cyan-700 text-cyan-300 rounded-full text-xs font-semibold">ดีเยี่ยม</span>
+        </div>
+      </div>
+
+      <button onclick="restartGame()" class="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition">
+        เล่นใหม่อีกครั้ง 🔄
+      </button>
+    </section>
+
+  </main>
+
+  <!-- ==================== GAME CORE LOGIC ==================== -->
+  <script>
+    // Database of Single Covalent Molecules
+    const MOLECULES_DB = [
+      {
+        formula: 'H₂O',
+        name: 'น้ำ (Water)',
+        atoms: [
+          { symbol: 'O', valence: 6 },
+          { symbol: 'H', valence: 1 },
+          { symbol: 'H', valence: 1 }
+        ],
+        distractor: { symbol: 'F', valence: 7 },
+        check: (bonds, atoms) => {
+          if (bonds.length !== 2) return false;
+          const oIndex = atoms.findIndex(a => a.symbol === 'O');
+          const hIndices = atoms.map((a, i) => a.symbol === 'H' ? i : -1).filter(i => i !== -1);
+          if (oIndex === -1 || hIndices.length !== 2) return false;
+
+          let matchedH = new Set();
+          for (let b of bonds) {
+            if (b.atom1 === oIndex && hIndices.includes(b.atom2)) matchedH.add(b.atom2);
+            else if (b.atom2 === oIndex && hIndices.includes(b.atom1)) matchedH.add(b.atom1);
+          }
+          return matchedH.size === 2;
+        }
+      },
+      {
+        formula: 'CH₄',
+        name: 'มีเทน (Methane)',
+        atoms: [
+          { symbol: 'C', valence: 4 },
+          { symbol: 'H', valence: 1 },
+          { symbol: 'H', valence: 1 },
+          { symbol: 'H', valence: 1 },
+          { symbol: 'H', valence: 1 }
+        ],
+        distractor: { symbol: 'Cl', valence: 7 },
+        check: (bonds, atoms) => {
+          if (bonds.length !== 4) return false;
+          const cIndex = atoms.findIndex(a => a.symbol === 'C');
+          const hIndices = atoms.map((a, i) => a.symbol === 'H' ? i : -1).filter(i => i !== -1);
+          if (cIndex === -1 || hIndices.length !== 4) return false;
+
+          let matchedH = new Set();
+          for (let b of bonds) {
+            if (b.atom1 === cIndex && hIndices.includes(b.atom2)) matchedH.add(b.atom2);
+            else if (b.atom2 === cIndex && hIndices.includes(b.atom1)) matchedH.add(b.atom1);
+          }
+          return matchedH.size === 4;
+        }
+      },
+      {
+        formula: 'NH₃',
+        name: 'แอมโมเนีย (Ammonia)',
+        atoms: [
+          { symbol: 'N', valence: 5 },
+          { symbol: 'H', valence: 1 },
+          { symbol: 'H', valence: 1 },
+          { symbol: 'H', valence: 1 }
+        ],
+        distractor: { symbol: 'O', valence: 6 },
+        check: (bonds, atoms) => {
+          if (bonds.length !== 3) return false;
+          const nIndex = atoms.findIndex(a => a.symbol === 'N');
+          const hIndices = atoms.map((a, i) => a.symbol === 'H' ? i : -1).filter(i => i !== -1);
+          if (nIndex === -1 || hIndices.length !== 3) return false;
+
+          let matchedH = new Set();
+          for (let b of bonds) {
+            if (b.atom1 === nIndex && hIndices.includes(b.atom2)) matchedH.add(b.atom2);
+            else if (b.atom2 === nIndex && hIndices.includes(b.atom1)) matchedH.add(b.atom1);
+          }
+          return matchedH.size === 3;
+        }
+      },
+      {
+        formula: 'HCl',
+        name: 'ไฮโดรเจนคลอไรด์ (Hydrogen Chloride)',
+        atoms: [
+          { symbol: 'H', valence: 1 },
+          { symbol: 'Cl', valence: 7 }
+        ],
+        distractor: { symbol: 'H', valence: 1 },
+        check: (bonds, atoms) => {
+          if (bonds.length !== 1) return false;
+          const b = bonds[0];
+          const a1 = atoms[b.atom1].symbol;
+          const a2 = atoms[b.atom2].symbol;
+          return (a1 === 'H' && a2 === 'Cl') || (a1 === 'Cl' && a2 === 'H');
+        }
+      },
+      {
+        formula: 'Cl₂',
+        name: 'แก๊สคลอรีน (Chlorine Gas)',
+        atoms: [
+          { symbol: 'Cl', valence: 7 },
+          { symbol: 'Cl', valence: 7 }
+        ],
+        distractor: { symbol: 'H', valence: 1 },
+        check: (bonds, atoms) => {
+          if (bonds.length !== 1) return false;
+          const b = bonds[0];
+          const a1 = atoms[b.atom1].symbol;
+          const a2 = atoms[b.atom2].symbol;
+          return a1 === 'Cl' && a2 === 'Cl';
+        }
+      },
+      {
+        formula: 'F₂',
+        name: 'แก๊สฟลูออรีน (Fluorine Gas)',
+        atoms: [
+          { symbol: 'F', valence: 7 },
+          { symbol: 'F', valence: 7 }
+        ],
+        distractor: { symbol: 'O', valence: 6 },
+        check: (bonds, atoms) => {
+          if (bonds.length !== 1) return false;
+          const b = bonds[0];
+          const a1 = atoms[b.atom1].symbol;
+          const a2 = atoms[b.atom2].symbol;
+          return a1 === 'F' && a2 === 'F';
+        }
+      }
+    ];
+
+    const ATOM_COLORS = {
+      'H': { bg: '#0284c7', border: '#38bdf8', text: '#ffffff' },
+      'O': { bg: '#e11d48', border: '#fb7185', text: '#ffffff' },
+      'C': { bg: '#334155', border: '#94a3b8', text: '#ffffff' },
+      'N': { bg: '#2563eb', border: '#60a5fa', text: '#ffffff' },
+      'Cl': { bg: '#059669', border: '#34d399', text: '#ffffff' },
+      'F': { bg: '#7c3aed', border: '#a78bfa', text: '#ffffff' }
+    };
+
+    // Return exact valence slots ONLY for actual valence electrons (No extra dots)
+    function getValenceSlots(count) {
+      if (count === 1) return [{ pos: 1, paired: false }];
+      if (count === 4) return [
+        { pos: 0, paired: false }, { pos: 1, paired: false },
+        { pos: 2, paired: false }, { pos: 3, paired: false }
+      ];
+      if (count === 5) return [
+        { pos: 0, paired: true }, { pos: 1, paired: false },
+        { pos: 2, paired: false }, { pos: 3, paired: false }
+      ];
+      if (count === 6) return [
+        { pos: 0, paired: true }, { pos: 2, paired: true },
+        { pos: 1, paired: false }, { pos: 3, paired: false }
+      ];
+      if (count === 7) return [
+        { pos: 0, paired: true }, { pos: 1, paired: true }, { pos: 2, paired: true },
+        { pos: 3, paired: false }
+      ];
+      return [];
+    }
+
+    const TOTAL_GAME_TIME = 180; // 3 minutes = 180 seconds
+
+    let gameState = {
+      playerName: 'นักเรียน',
+      currentQuestionIdx: 0,
+      questions: [],
+      score: 0, // Accumulative Score
+      correctCount: 0,
+      attempts: 1,
+      atoms: [],
+      bonds: [],
+      selectedElectron: null,
+      timeLeft: TOTAL_GAME_TIME,
+      timerInterval: null
+    };
+
+    function startGame() {
+      sound.init();
+      const nameInput = document.getElementById('input-name').value.trim();
+      if (nameInput) gameState.playerName = nameInput;
+
+      document.getElementById('stat-player-name').innerText = gameState.playerName;
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('header-stats').classList.remove('hidden');
+      document.getElementById('header-stats').classList.add('flex');
+      document.getElementById('timer-bar-container').classList.remove('hidden');
+      document.getElementById('screen-game').classList.remove('hidden');
+      document.getElementById('screen-game').classList.add('flex');
+
+      gameState.questions = [...MOLECULES_DB].sort(() => 0.5 - Math.random()).slice(0, 5);
+      gameState.currentQuestionIdx = 0;
+      gameState.score = 0;
+      gameState.correctCount = 0;
+      gameState.timeLeft = TOTAL_GAME_TIME;
+
+      startTimer();
+      loadQuestion(0);
+      requestAnimationFrame(physicsLoop);
+    }
+
+    function startTimer() {
+      clearInterval(gameState.timerInterval);
+      updateTimerDisplay();
+
+      gameState.timerInterval = setInterval(() => {
+        gameState.timeLeft--;
+        updateTimerDisplay();
+
+        if (gameState.timeLeft <= 0) {
+          clearInterval(gameState.timerInterval);
+          sound.playWrong();
+          alert('⏰ หมดเวลา 3 นาทีแล้วครับ! ระบบจะสรุปผลการทดสอบทันที');
+          showFinalReport();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(gameState.timeLeft / 60);
+      const seconds = gameState.timeLeft % 60;
+      const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      document.getElementById('stat-timer').innerText = formatted;
+
+      const pct = (gameState.timeLeft / TOTAL_GAME_TIME) * 100;
+      document.getElementById('timer-bar').style.width = `${pct}%`;
+    }
+
+    function loadQuestion(idx) {
+      gameState.attempts = 1;
+      gameState.bonds = [];
+      gameState.selectedElectron = null;
+
+      const q = gameState.questions[idx];
+      document.getElementById('target-name').innerText = q.name;
+      document.getElementById('stat-progress').innerText = `${idx + 1}/${gameState.questions.length}`;
+      document.getElementById('stat-score').innerText = gameState.score;
+      document.getElementById('attempt-badge').innerText = 'โอกาสครั้งที่ 1/2';
+      document.getElementById('attempt-badge').className = 'px-2.5 py-1 text-xs font-semibold text-amber-300 bg-amber-950/60 border border-amber-800/80 rounded-full';
+
+      const container = document.getElementById('playfield');
+      const rect = container.getBoundingClientRect();
+      const width = rect.width || 600;
+      const height = rect.height || 400;
+
+      let rawAtoms = [...q.atoms.map(a => ({ ...a, isDistractor: false })), { ...q.distractor, isDistractor: true }];
+      rawAtoms.sort(() => 0.5 - Math.random());
+
+      gameState.atoms = rawAtoms.map((at, i) => {
+        const angle = (i / rawAtoms.length) * Math.PI * 2;
+        const radius = Math.min(width, height) * 0.28;
+        const cx = width / 2 + Math.cos(angle) * radius;
+        const cy = height / 2 + Math.sin(angle) * radius;
+
+        return {
+          id: i,
+          symbol: at.symbol,
+          valence: at.valence,
+          isDistractor: at.isDistractor,
+          x: cx,
+          y: cy,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          rotation: 0,
+          isBonded: false,
+          slots: getValenceSlots(at.valence)
+        };
+      });
+
+      renderAtomsHTML();
+      renderBondsSVG();
+    }
+
+    function renderAtomsHTML() {
+      const container = document.getElementById('atoms-container');
+      container.innerHTML = '';
+
+      gameState.atoms.forEach((atom, aIdx) => {
+        const atomEl = document.createElement('div');
+        atomEl.className = 'absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 touch-none select-none';
+        atomEl.style.left = `${atom.x}px`;
+        atomEl.style.top = `${atom.y}px`;
+        atomEl.id = `atom-${aIdx}`;
+
+        const color = ATOM_COLORS[atom.symbol] || { bg: '#334155', border: '#94a3b8', text: '#fff' };
+        let slotsSVG = '';
+        const baseAngles = [270, 0, 90, 180];
+
+        atom.slots.forEach((slot, sIdx) => {
+          const angleRad = (baseAngles[slot.pos] + atom.rotation) * (Math.PI / 180);
+
+          const bondedInfo = gameState.bonds.find(b =>
+            (b.atom1 === aIdx && b.slot1 === sIdx) ||
+            (b.atom2 === aIdx && b.slot2 === sIdx)
+          );
+
+          let radius = 32; 
+          let eRadius = 4.5;
+
+          if (bondedInfo) {
+            radius = 18; 
+          }
+
+          const ex = 50 + Math.cos(angleRad) * radius;
+          const ey = 50 + Math.sin(angleRad) * radius;
+
+          const isSelected = gameState.selectedElectron &&
+            gameState.selectedElectron.atomIdx === aIdx &&
+            gameState.selectedElectron.slotIdx === sIdx;
+
+          if (slot.paired) {
+            const offsetAngle1 = angleRad - 0.18;
+            const offsetAngle2 = angleRad + 0.18;
+            const ex1 = 50 + Math.cos(offsetAngle1) * radius;
+            const ey1 = 50 + Math.sin(offsetAngle1) * radius;
+            const ex2 = 50 + Math.cos(offsetAngle2) * radius;
+            const ey2 = 50 + Math.sin(offsetAngle2) * radius;
+
+            slotsSVG += `<circle cx="${ex1}" cy="${ey1}" r="${eRadius}" fill="#38bdf8" />`;
+            slotsSVG += `<circle cx="${ex2}" cy="${ey2}" r="${eRadius}" fill="#38bdf8" />`;
+          } else {
+            const dotColor = isSelected ? '#f43f5e' : (bondedInfo ? '#34d399' : '#38bdf8');
+            const glowClass = isSelected ? 'electron-selected' : '';
+
+            slotsSVG += `
+              <g class="cursor-pointer ${glowClass}" onclick="onSelectElectron(event, ${aIdx}, ${sIdx})">
+                <circle cx="${ex}" cy="${ey}" r="14" fill="transparent" />
+                <circle cx="${ex}" cy="${ey}" r="${eRadius + 1}" fill="${dotColor}" stroke="#ffffff" stroke-width="1.5" />
+              </g>
+            `;
+          }
+        });
+
+        // Clean Atom Rendering: NO extra dotted circles or unneeded outer marks
+        atomEl.innerHTML = `
+          <div class="relative w-24 h-24 flex items-center justify-center">
+            <svg class="w-full h-full overflow-visible atom-glow" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="22" fill="${color.bg}" stroke="${color.border}" stroke-width="2.5" />
+              <text x="50" y="55" text-anchor="middle" fill="${color.text}" font-size="16" font-weight="bold" font-family="Kanit">${atom.symbol}</text>
+              ${slotsSVG}
+            </svg>
+          </div>
+        `;
+
+        atomEl.addEventListener('mousedown', (e) => startDrag(e, aIdx));
+        atomEl.addEventListener('touchstart', (e) => startDrag(e, aIdx), { passive: false });
+
+        container.appendChild(atomEl);
+      });
+    }
+
+    function onSelectElectron(e, atomIdx, slotIdx) {
+      e.stopPropagation();
+      sound.playSelect();
+
+      const atom = gameState.atoms[atomIdx];
+      const slot = atom.slots[slotIdx];
+
+      if (slot.paired) return;
+
+      const alreadyBonded = gameState.bonds.some(b =>
+        (b.atom1 === atomIdx && b.slot1 === slotIdx) ||
+        (b.atom2 === atomIdx && b.slot2 === slotIdx)
+      );
+      if (alreadyBonded) return;
+
+      if (!gameState.selectedElectron) {
+        gameState.selectedElectron = { atomIdx, slotIdx };
+      } else {
+        const sel = gameState.selectedElectron;
+
+        if (sel.atomIdx === atomIdx && sel.slotIdx === slotIdx) {
+          gameState.selectedElectron = null;
+        } else if (sel.atomIdx === atomIdx) {
+          gameState.selectedElectron = { atomIdx, slotIdx };
+        } else {
+          createBond(sel.atomIdx, sel.slotIdx, atomIdx, slotIdx);
+          gameState.selectedElectron = null;
+        }
+      }
+
+      renderAtomsHTML();
+      renderBondsSVG();
+    }
+
+    function createBond(aIdx1, sIdx1, aIdx2, sIdx2) {
+      sound.playBond();
+
+      const atom1 = gameState.atoms[aIdx1];
+      const atom2 = gameState.atoms[aIdx2];
+
+      gameState.bonds.push({
+        atom1: aIdx1, slot1: sIdx1,
+        atom2: aIdx2, slot2: sIdx2
+      });
+
+      atom1.isBonded = true;
+      atom2.isBonded = true;
+      atom1.vx = 0; atom1.vy = 0;
+      atom2.vx = 0; atom2.vy = 0;
+
+      alignBondedAtoms(aIdx1, sIdx1, aIdx2, sIdx2);
+
+      renderAtomsHTML();
+      renderBondsSVG();
+    }
+
+    // Auto-Rotate and Move Atoms closer (~3 cm / 110px apart) upon bonding
+    function alignBondedAtoms(aIdx1, sIdx1, aIdx2, sIdx2) {
+      const atom1 = gameState.atoms[aIdx1];
+      const atom2 = gameState.atoms[aIdx2];
+
+      const baseAngles = [270, 0, 90, 180];
+      const slot1Pos = atom1.slots[sIdx1].pos;
+      const slot2Pos = atom2.slots[sIdx2].pos;
+
+      const dx = atom2.x - atom1.x;
+      const dy = atom2.y - atom1.y;
+      const angle1To2 = Math.atan2(dy, dx) * (180 / Math.PI);
+      const angle2To1 = angle1To2 + 180;
+
+      atom1.rotation = angle1To2 - baseAngles[slot1Pos];
+      atom2.rotation = angle2To1 - baseAngles[slot2Pos];
+
+      const targetDist = 110; // ~3 cm distance
+      const currentDist = Math.hypot(dx, dy) || 1;
+      const midX = (atom1.x + atom2.x) / 2;
+      const midY = (atom1.y + atom2.y) / 2;
+
+      const normX = dx / currentDist;
+      const normY = dy / currentDist;
+
+      atom1.x = midX - (normX * targetDist / 2);
+      atom1.y = midY - (normY * targetDist / 2);
+      atom2.x = midX + (normX * targetDist / 2);
+      atom2.y = midY + (normY * targetDist / 2);
+    }
+
+    function renderBondsSVG() {
+      const g = document.getElementById('bonds-group');
+      g.innerHTML = '';
+
+      const baseAngles = [270, 0, 90, 180];
+      const sharedRadius = 18;
+
+      gameState.bonds.forEach(bond => {
+        const a1 = gameState.atoms[bond.atom1];
+        const a2 = gameState.atoms[bond.atom2];
+
+        const slot1Pos = a1.slots[bond.slot1].pos;
+        const slot2Pos = a2.slots[bond.slot2].pos;
+
+        const rad1 = (baseAngles[slot1Pos] + a1.rotation) * (Math.PI / 180);
+        const rad2 = (baseAngles[slot2Pos] + a2.rotation) * (Math.PI / 180);
+
+        const x1 = a1.x + Math.cos(rad1) * sharedRadius;
+        const y1 = a1.y + Math.sin(rad1) * sharedRadius;
+        const x2 = a2.x + Math.cos(rad2) * sharedRadius;
+        const y2 = a2.y + Math.sin(rad2) * sharedRadius;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        line.setAttribute('stroke', '#38bdf8');
+        line.setAttribute('stroke-width', '5'); // Thick line
+        line.setAttribute('stroke-linecap', 'round');
+        line.setAttribute('filter', 'drop-shadow(0px 0px 6px #0284c7)');
+
+        g.appendChild(line);
+      });
+    }
+
+    function clearBonds() {
+      sound.playBreak();
+      gameState.bonds = [];
+      gameState.selectedElectron = null;
+
+      gameState.atoms.forEach(a => {
+        a.isBonded = false;
+        a.vx = (Math.random() - 0.5) * 0.4;
+        a.vy = (Math.random() - 0.5) * 0.4;
+      });
+
+      renderAtomsHTML();
+      renderBondsSVG();
+    }
+
+    function checkAnswer() {
+      const q = gameState.questions[gameState.currentQuestionIdx];
+      const isCorrect = q.check(gameState.bonds, gameState.atoms);
+
+      if (isCorrect) {
+        sound.playSuccess();
+        const pts = gameState.attempts === 1 ? 2 : 1;
+        gameState.score += pts; // Accumulate Score
+        gameState.correctCount++;
+        document.getElementById('stat-score').innerText = gameState.score;
+
+        showFeedbackModal(
+          true,
+          'ถูกต้องสมบูรณ์!',
+          `คุณสร้างพันธะโคเวเลนต์เดี่ยวใน ${q.name} ได้ถูกต้อง (+${pts} คะแนน | คะแนนสะสม: ${gameState.score})`,
+          q.formula,
+          true
+        );
+      } else {
+        sound.playWrong();
+        if (gameState.attempts === 1) {
+          gameState.attempts = 2;
+          document.getElementById('attempt-badge').innerText = 'โอกาสครั้งที่ 2/2';
+          document.getElementById('attempt-badge').className = 'px-2.5 py-1 text-xs font-semibold text-rose-300 bg-rose-950/80 border border-rose-800 rounded-full';
+
+          clearBonds();
+          showFeedbackModal(
+            false,
+            'ยังไม่ถูกต้อง!',
+            'การเชื่อมต่อพันธะยังไม่ถูกต้องตามหลักเคมี สลายพันธะแล้วลองอีกครั้งครับ',
+            '',
+            false
+          );
+        } else {
+          // 2nd wrong attempt: Reveal chemical formula and Lewis structures
+          showFeedbackModal(
+            false,
+            'ตอบผิดครั้งที่ 2',
+            `เฉลยโครงสร้างพันธะลิวอิสที่ถูกต้องสำหรับ ${q.name}:`,
+            q.formula,
+            true
+          );
+        }
+      }
+    }
+
+    function showFeedbackModal(isSuccess, title, desc, formula = '', showLewis = false) {
+      const modal = document.getElementById('modal-feedback');
+      const icon = document.getElementById('feedback-icon');
+      const titleEl = document.getElementById('feedback-title');
+      const descEl = document.getElementById('feedback-desc');
+      const formulaBox = document.getElementById('formula-reveal-box');
+      const revealedFormula = document.getElementById('revealed-formula');
+      const lewisContainer = document.getElementById('lewis-models-container');
+
+      titleEl.innerText = title;
+      descEl.innerText = desc;
+
+      if (isSuccess) {
+        icon.className = 'w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-green-500/10 border border-green-500/30 text-green-400 shrink-0';
+        icon.innerText = '✓';
+        formulaBox.classList.remove('hidden');
+        formulaBox.classList.add('flex');
+        revealedFormula.innerText = formula;
+      } else {
+        icon.className = 'w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 shrink-0';
+        icon.innerText = '✕';
+        if (showLewis) {
+          formulaBox.classList.remove('hidden');
+          formulaBox.classList.add('flex');
+          revealedFormula.innerText = formula;
+        } else {
+          formulaBox.classList.add('hidden');
+          formulaBox.classList.remove('flex');
+        }
+      }
+
+      if (showLewis) {
+        lewisContainer.classList.remove('hidden');
+        lewisContainer.classList.add('flex');
+        renderLewisModels(formula);
+      } else {
+        lewisContainer.classList.add('hidden');
+        lewisContainer.classList.remove('flex');
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    // Render Lewis Dot & Line Structures with Straight Lines
+    function renderLewisModels(formula) {
+      const dotSvg = document.getElementById('lewis-dot-svg');
+      const lineSvg = document.getElementById('lewis-line-svg');
+
+      let dotHTML = '';
+      let lineHTML = '';
+
+      if (formula === 'H₂O') {
+        dotHTML = `
+          <text x="100" y="68" fill="#fb7185" font-size="20" font-weight="bold" text-anchor="middle">O</text>
+          <text x="40" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="160" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <circle cx="100" cy="38" r="3" fill="#38bdf8" /><circle cx="100" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="100" cy="82" r="3" fill="#38bdf8" /><circle cx="100" cy="90" r="3" fill="#38bdf8" />
+          <circle cx="68" cy="62" r="3" fill="#34d399" /><circle cx="76" cy="62" r="3" fill="#34d399" />
+          <circle cx="124" cy="62" r="3" fill="#34d399" /><circle cx="132" cy="62" r="3" fill="#34d399" />
+        `;
+        lineHTML = `
+          <text x="100" y="68" fill="#fb7185" font-size="20" font-weight="bold" text-anchor="middle">O</text>
+          <text x="40" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="160" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <circle cx="100" cy="38" r="3" fill="#38bdf8" /><circle cx="100" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="100" cy="82" r="3" fill="#38bdf8" /><circle cx="100" cy="90" r="3" fill="#38bdf8" />
+          <line x1="55" y1="62" x2="85" y2="62" stroke="#34d399" stroke-width="3" />
+          <line x1="115" y1="62" x2="145" y2="62" stroke="#34d399" stroke-width="3" />
+        `;
+      } else if (formula === 'CH₄') {
+        dotHTML = `
+          <text x="100" y="68" fill="#94a3b8" font-size="20" font-weight="bold" text-anchor="middle">C</text>
+          <text x="40" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="160" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="100" y="22" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="100" y="116" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <circle cx="68" cy="62" r="3" fill="#34d399" /><circle cx="76" cy="62" r="3" fill="#34d399" />
+          <circle cx="124" cy="62" r="3" fill="#34d399" /><circle cx="132" cy="62" r="3" fill="#34d399" />
+          <circle cx="100" cy="36" r="3" fill="#34d399" /><circle cx="100" cy="44" r="3" fill="#34d399" />
+          <circle cx="100" cy="80" r="3" fill="#34d399" /><circle cx="100" cy="88" r="3" fill="#34d399" />
+        `;
+        lineHTML = `
+          <text x="100" y="68" fill="#94a3b8" font-size="20" font-weight="bold" text-anchor="middle">C</text>
+          <text x="40" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="160" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="100" y="22" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="100" y="116" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <line x1="55" y1="62" x2="85" y2="62" stroke="#34d399" stroke-width="3" />
+          <line x1="115" y1="62" x2="145" y2="62" stroke="#34d399" stroke-width="3" />
+          <line x1="100" y1="28" x2="100" y2="48" stroke="#34d399" stroke-width="3" />
+          <line x1="100" y1="76" x2="100" y2="96" stroke="#34d399" stroke-width="3" />
+        `;
+      } else if (formula === 'NH₃') {
+        dotHTML = `
+          <text x="100" y="68" fill="#60a5fa" font-size="20" font-weight="bold" text-anchor="middle">N</text>
+          <text x="40" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="160" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="100" y="116" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <circle cx="100" cy="38" r="3" fill="#38bdf8" /><circle cx="100" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="68" cy="62" r="3" fill="#34d399" /><circle cx="76" cy="62" r="3" fill="#34d399" />
+          <circle cx="124" cy="62" r="3" fill="#34d399" /><circle cx="132" cy="62" r="3" fill="#34d399" />
+          <circle cx="100" cy="80" r="3" fill="#34d399" /><circle cx="100" cy="88" r="3" fill="#34d399" />
+        `;
+        lineHTML = `
+          <text x="100" y="68" fill="#60a5fa" font-size="20" font-weight="bold" text-anchor="middle">N</text>
+          <text x="40" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="160" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="100" y="116" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <circle cx="100" cy="38" r="3" fill="#38bdf8" /><circle cx="100" cy="46" r="3" fill="#38bdf8" />
+          <line x1="55" y1="62" x2="85" y2="62" stroke="#34d399" stroke-width="3" />
+          <line x1="115" y1="62" x2="145" y2="62" stroke="#34d399" stroke-width="3" />
+          <line x1="100" y1="76" x2="100" y2="96" stroke="#34d399" stroke-width="3" />
+        `;
+      } else if (formula === 'HCl') {
+        dotHTML = `
+          <text x="65" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="135" y="68" fill="#34d399" font-size="20" font-weight="bold" text-anchor="middle">Cl</text>
+          <circle cx="135" cy="38" r="3" fill="#38bdf8" /><circle cx="135" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="135" cy="82" r="3" fill="#38bdf8" /><circle cx="135" cy="90" r="3" fill="#38bdf8" />
+          <circle cx="158" cy="62" r="3" fill="#38bdf8" /><circle cx="166" cy="62" r="3" fill="#38bdf8" />
+          <circle cx="92" cy="62" r="3" fill="#34d399" /><circle cx="100" cy="62" r="3" fill="#34d399" />
+        `;
+        lineHTML = `
+          <text x="65" y="68" fill="#38bdf8" font-size="20" font-weight="bold" text-anchor="middle">H</text>
+          <text x="135" y="68" fill="#34d399" font-size="20" font-weight="bold" text-anchor="middle">Cl</text>
+          <circle cx="135" cy="38" r="3" fill="#38bdf8" /><circle cx="135" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="135" cy="82" r="3" fill="#38bdf8" /><circle cx="135" cy="90" r="3" fill="#38bdf8" />
+          <circle cx="158" cy="62" r="3" fill="#38bdf8" /><circle cx="166" cy="62" r="3" fill="#38bdf8" />
+          <line x1="80" y1="62" x2="115" y2="62" stroke="#34d399" stroke-width="3" />
+        `;
+      } else if (formula === 'Cl₂' || formula === 'F₂') {
+        const sym = formula === 'Cl₂' ? 'Cl' : 'F';
+        const color = formula === 'Cl₂' ? '#34d399' : '#a78bfa';
+        dotHTML = `
+          <text x="65" y="68" fill="${color}" font-size="20" font-weight="bold" text-anchor="middle">${sym}</text>
+          <text x="135" y="68" fill="${color}" font-size="20" font-weight="bold" text-anchor="middle">${sym}</text>
+          <circle cx="65" cy="38" r="3" fill="#38bdf8" /><circle cx="65" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="65" cy="82" r="3" fill="#38bdf8" /><circle cx="65" cy="90" r="3" fill="#38bdf8" />
+          <circle cx="34" cy="62" r="3" fill="#38bdf8" /><circle cx="42" cy="62" r="3" fill="#38bdf8" />
+          <circle cx="135" cy="38" r="3" fill="#38bdf8" /><circle cx="135" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="135" cy="82" r="3" fill="#38bdf8" /><circle cx="135" cy="90" r="3" fill="#38bdf8" />
+          <circle cx="158" cy="62" r="3" fill="#38bdf8" /><circle cx="166" cy="62" r="3" fill="#38bdf8" />
+          <circle cx="92" cy="62" r="3" fill="#34d399" /><circle cx="100" cy="62" r="3" fill="#34d399" />
+        `;
+        lineHTML = `
+          <text x="65" y="68" fill="${color}" font-size="20" font-weight="bold" text-anchor="middle">${sym}</text>
+          <text x="135" y="68" fill="${color}" font-size="20" font-weight="bold" text-anchor="middle">${sym}</text>
+          <circle cx="65" cy="38" r="3" fill="#38bdf8" /><circle cx="65" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="65" cy="82" r="3" fill="#38bdf8" /><circle cx="65" cy="90" r="3" fill="#38bdf8" />
+          <circle cx="34" cy="62" r="3" fill="#38bdf8" /><circle cx="42" cy="62" r="3" fill="#38bdf8" />
+          <circle cx="135" cy="38" r="3" fill="#38bdf8" /><circle cx="135" cy="46" r="3" fill="#38bdf8" />
+          <circle cx="135" cy="82" r="3" fill="#38bdf8" /><circle cx="135" cy="90" r="3" fill="#38bdf8" />
+          <circle cx="158" cy="62" r="3" fill="#38bdf8" /><circle cx="166" cy="62" r="3" fill="#38bdf8" />
+          <line x1="82" y1="62" x2="118" y2="62" stroke="#34d399" stroke-width="3" />
+        `;
+      }
+
+      dotSvg.innerHTML = dotHTML;
+      lineSvg.innerHTML = lineHTML;
+    }
+
+    function closeFeedbackModal() {
+      document.getElementById('modal-feedback').classList.add('hidden');
+      document.getElementById('modal-feedback').classList.remove('flex');
+
+      if (gameState.currentQuestionIdx < gameState.questions.length - 1) {
+        gameState.currentQuestionIdx++;
+        loadQuestion(gameState.currentQuestionIdx);
+      } else {
+        showFinalReport();
+      }
+    }
+
+    function showFinalReport() {
+      clearInterval(gameState.timerInterval);
+
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('header-stats').classList.add('hidden');
+      document.getElementById('timer-bar-container').classList.add('hidden');
+
+      const totalMax = gameState.questions.length * 2;
+      const timeUsedSec = TOTAL_GAME_TIME - gameState.timeLeft;
+      const usedMin = Math.floor(timeUsedSec / 60);
+      const usedSec = timeUsedSec % 60;
+
+      document.getElementById('res-name').innerText = gameState.playerName;
+      document.getElementById('res-correct').innerText = `${gameState.correctCount} / ${gameState.questions.length} ข้อ`;
+      document.getElementById('res-score').innerText = `${gameState.score} / ${totalMax} คะแนน`;
+      document.getElementById('res-time-used').innerText = `${String(usedMin).padStart(2, '0')}:${String(usedSec).padStart(2, '0')} นาที`;
+
+      let grade = 'ควรปรับปรุง';
+      if (gameState.score >= 8) grade = 'ดีเยี่ยม (Excellent)';
+      else if (gameState.score >= 5) grade = 'ดี (Good)';
+      else if (gameState.score >= 3) grade = 'ผ่านเกณฑ์ (Pass)';
+      document.getElementById('res-grade').innerText = grade;
+
+      document.getElementById('screen-result').classList.remove('hidden');
+      document.getElementById('screen-result').classList.add('flex');
+    }
+
+    function endGameEarly() {
+      if (confirm('คุณต้องการจบเกมและดูผลคะแนนทันทีหรือไม่?')) {
+        showFinalReport();
+      }
+    }
+
+    function restartGame() {
+      clearInterval(gameState.timerInterval);
+      document.getElementById('screen-result').classList.add('hidden');
+      document.getElementById('screen-start').classList.remove('hidden');
+    }
+
+    // Dragging Logic for Atom Cores
+    let dragTargetIdx = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    function startDrag(e, idx) {
+      dragTargetIdx = idx;
+      const atom = gameState.atoms[idx];
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      dragOffset.x = clientX - atom.x;
+      dragOffset.y = clientY - atom.y;
+
+      window.addEventListener('mousemove', onDrag);
+      window.addEventListener('touchmove', onDrag, { passive: false });
+      window.addEventListener('mouseup', stopDrag);
+      window.addEventListener('touchend', stopDrag);
+    }
+
+    function onDrag(e) {
+      if (dragTargetIdx === null) return;
+      if (e.cancelable) e.preventDefault();
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const atom = gameState.atoms[dragTargetIdx];
+      atom.x = clientX - dragOffset.x;
+      atom.y = clientY - dragOffset.y;
+
+      gameState.bonds.forEach(b => {
+        if (b.atom1 === dragTargetIdx || b.atom2 === dragTargetIdx) {
+          const otherIdx = b.atom1 === dragTargetIdx ? b.atom2 : b.atom1;
+          const sIdx1 = b.atom1 === dragTargetIdx ? b.slot1 : b.slot2;
+          const sIdx2 = b.atom1 === dragTargetIdx ? b.slot2 : b.slot1;
+          alignBondedAtoms(dragTargetIdx, sIdx1, otherIdx, sIdx2);
+        }
+      });
+
+      renderAtomsHTML();
+      renderBondsSVG();
+    }
+
+    function stopDrag() {
+      dragTargetIdx = null;
+      window.removeEventListener('mousemove', onDrag);
+      window.removeEventListener('touchmove', onDrag);
+      window.removeEventListener('mouseup', stopDrag);
+      window.removeEventListener('touchend', stopDrag);
+    }
+
+    function physicsLoop() {
+      const playfield = document.getElementById('playfield');
+      if (playfield && gameState.atoms.length > 0) {
+        const rect = playfield.getBoundingClientRect();
+        const w = rect.width;
+        const h = rect.height;
+
+        gameState.atoms.forEach(atom => {
+          if (!atom.isBonded && dragTargetIdx !== atom.id) {
+            atom.x += atom.vx;
+            atom.y += atom.vy;
+
+            const padding = 45;
+            if (atom.x < padding || atom.x > w - padding) atom.vx *= -1;
+            if (atom.y < padding || atom.y > h - padding) atom.vy *= -1;
+          }
+        });
+
+        gameState.atoms.forEach((atom, idx) => {
+          const el = document.getElementById(`atom-${idx}`);
+          if (el) {
+            el.style.left = `${atom.x}px`;
+            el.style.top = `${atom.y}px`;
+          }
+        });
+
+        renderBondsSVG();
+      }
+
+      requestAnimationFrame(physicsLoop);
+    }
+  </script>
+</body>
+</html>
